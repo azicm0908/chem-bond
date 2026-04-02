@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>화학 결합 시뮬레이터</title>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <style>
+        /* 1. 전체 배경 및 폰트 설정 */
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+            color: #2a3b4c;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        /* 2. 상단 제목 */
+        h2 { 
+            margin: 0 0 20px 0; 
+            font-size: 2.2rem; 
+            text-align: center;
+        }
+        
+        /* 3. 메인 레이아웃 (좌우 배치를 위한 래퍼) */
+        #app-wrapper {
+            position: relative;
+            width: 1100px;
+            height: 650px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 2px solid #e1e4e8;
+            overflow: hidden;
+        }
+
+        /* 4. 우측 도화지 */
+        #container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1100px;
+            height: 650px;
+            z-index: 1;
+        }
+
+        /* 5. 좌측 UI 패널 */
+        #left-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 320px;
+            height: 100%;
+            padding: 25px;
+            box-sizing: border-box;
+            background-color: transparent;
+            border-right: 2px dashed #e1e4e8;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .interactive-box {
+            pointer-events: auto; 
+        }
+
+        .desc-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e1e4e8;
+        }
+        .desc { color: #57606a; font-size: 15px; margin: 0; line-height: 1.4; }
+        
+        .tip-box {
+            background-color: #fdf2f2;
+            border: 1px solid #f98080;
+            padding: 12px 15px;
+            border-radius: 8px;
+        }
+        .tip { color: #c0392b; font-size: 14px; font-weight: bold; margin: 0; line-height: 1.4; }
+        
+        .controls-box {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid #e1e4e8;
+            margin-top: 10px;
+        }
+        label { font-size: 15px; font-weight: bold; }
+        
+        select {
+            padding: 10px;
+            font-size: 15px;
+            border: 2px solid #d1d5da;
+            border-radius: 6px;
+            background-color: white;
+            cursor: pointer;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        select:focus { border-color: #3e7ebc; } 
+        
+        button {
+            padding: 12px;
+            font-size: 15px;
+            background-color: #3e7ebc; 
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        button:hover { background-color: #32669a; }
+
+        /* 다중 이동 버튼 스타일 */
+        #multiMoveBtn {
+            background-color: #27ae60;
+            margin-top: 8px;
+        }
+        #multiMoveBtn:hover { background-color: #219653; }
+        #multiMoveBtn.active { background-color: #e74c3c; }
+        #multiMoveBtn.active:hover { background-color: #c0392b; }
+
+        /* 내부 전자 채우기 버튼 스타일 */
+        #fillInnerBtn {
+            background-color: #f39c12;
+            margin-top: 4px;
+        }
+        #fillInnerBtn:hover { background-color: #d68910; }
+        #fillInnerBtn.active { background-color: #d35400; }
+        #fillInnerBtn.active:hover { background-color: #ba4a00; }
+        
+        /* 6. 하단 제작자 문구 */
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>⚛️ 화학 결합 시뮬레이터 v1.02 ⚛️</h2>
+
+    <div id="app-wrapper">
+        <div id="container"></div>
+
+        <div id="left-ui">
+            <div class="desc-box interactive-box">
+                <p class="desc">원자를 선택하고 <b>[화면에 추가하기]</b> 버튼을 눌러 오른쪽 빈 화면에 배치해보세요.</p>
+            </div>
+            
+            <div class="tip-box interactive-box">
+                <p class="tip">💡 팁: 화면에 있는 원자나 전자를 '더블 클릭'하거나, 다중 선택 후 'Delete'키를 누르면 삭제됩니다.</p>
+            </div>
+            
+            <div class="controls-box interactive-box">
+                <label for="atomSelect">원자 선택:</label>
+                <select id="atomSelect"></select>
+                <button id="addAtomBtn">➕ 화면에 추가하기</button>
+                <hr style="width: 100%; border: 0; border-top: 1px solid #e1e4e8; margin: 5px 0;">
+                <button id="multiMoveBtn">🔲 다중 선택 모드: OFF</button>
+                <button id="fillInnerBtn">⚛️ 내부 전자 자동 채우기: OFF</button>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="footer">made by 손진쌤</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1~20번 원소 데이터
+            const elementsData = [
+                { num: 1, symbol: 'H', shells: 1, name: '수소' }, { num: 2, symbol: 'He', shells: 1, name: '헬륨' },
+                { num: 3, symbol: 'Li', shells: 2, name: '리튬' }, { num: 4, symbol: 'Be', shells: 2, name: '베릴륨' },
+                { num: 5, symbol: 'B', shells: 2, name: '붕소' }, { num: 6, symbol: 'C', shells: 2, name: '탄소' },
+                { num: 7, symbol: 'N', shells: 2, name: '질소' }, { num: 8, symbol: 'O', shells: 2, name: '산소' },
+                { num: 9, symbol: 'F', shells: 2, name: '플루오린' }, { num: 10, symbol: 'Ne', shells: 2, name: '네온' },
+                { num: 11, symbol: 'Na', shells: 3, name: '나트륨' }, { num: 12, symbol: 'Mg', shells: 3, name: '마그네슘' },
+                { num: 13, symbol: 'Al', shells: 3, name: '알루미늄' }, { num: 14, symbol: 'Si', shells: 3, name: '규소' },
+                { num: 15, symbol: 'P', shells: 3, name: '인' }, { num: 16, symbol: 'S', shells: 3, name: '황' },
+                { num: 17, symbol: 'Cl', shells: 3, name: '염소' }, { num: 18, symbol: 'Ar', shells: 3, name: '아르곤' },
+                { num: 19, symbol: 'K', shells: 4, name: '칼륨' }, { num: 20, symbol: 'Ca', shells: 4, name: '칼슘' }
+            ];
+
+            const selectEl = document.getElementById('atomSelect');
+            elementsData.forEach((el, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.text = `${el.num}번. ${el.name} (${el.symbol})`;
+                selectEl.appendChild(option);
+            });
+
+            const stage = new Konva.Stage({ container: 'container', width: 1100, height: 650 });
+            const layer = new Konva.Layer();
+            stage.add(layer);
+
+            // === 다중 선택 및 이동을 위한 상태 및 노드 준비 ===
+            let isMultiMoveMode = false;
+            let selectedNodes = [];
+            let isFillInnerMode = false; // 내부 전자 채우기 모드 상태
+
+            const tr = new Konva.Transformer({
+                nodes: [],
+                resizeEnabled: false, 
+                rotateEnabled: false, 
+                borderStroke: '#27ae60',
+                borderStrokeWidth: 2,
+                borderDash: [5, 5]
+            });
+            layer.add(tr);
+
+            const selectionRect = new Konva.Rect({
+                fill: 'rgba(39, 174, 96, 0.2)',
+                visible: false,
+                stroke: '#27ae60',
+                strokeWidth: 1
+            });
+            layer.add(selectionRect);
+
+            function removeNodeFromSelection(node) {
+                if (selectedNodes.includes(node)) {
+                    selectedNodes = selectedNodes.filter(n => n !== node);
+                    tr.nodes(selectedNodes);
+                }
+            }
+
+            // 원자 생성 함수 (내부 전자 옵션 추가)
+            function createAtom(x, y, symbol, shells, fillInner = false) {
+                const group = new Konva.Group({ x: x, y: y, draggable: true });
+
+                const nucleus = new Konva.Circle({ radius: 25, fill: '#f1c40f', opacity: 0.3 });
+                group.add(nucleus);
+
+                const shellSpacing = 40; 
+                const baseRadius = 40;   
+
+                // 전자 껍질 그리기
+                for(let i = 0; i < shells; i++) {
+                    const shell = new Konva.Circle({
+                        radius: baseRadius + (i * shellSpacing),
+                        stroke: '#2a3b4c', 
+                        strokeWidth: 2,
+                        dash: [8, 4] 
+                    });
+                    group.add(shell);
+                }
+
+                // 내부 전자 그리기 (fillInner가 활성화되어 있고, 껍질이 2개 이상일 때)
+                if (fillInner && shells > 1) {
+                    const innerShellElectronCounts = [2, 8, 8]; // 각 주기의 최대 내부 전자 수
+                    
+                    for (let i = 0; i < shells - 1; i++) {
+                        const radius = baseRadius + (i * shellSpacing);
+                        const eCount = innerShellElectronCounts[i];
+                        
+                        for (let j = 0; j < eCount; j++) {
+                            const angle = (j * (Math.PI * 2)) / eCount;
+                            const ex = radius * Math.cos(angle);
+                            const ey = radius * Math.sin(angle);
+                            
+                            // 전자는 그룹(원자) 내부에 추가되어 그룹과 함께 이동하며, 개별 드래그 불가
+                            const electron = new Konva.Circle({
+                                x: ex, y: ey, radius: 10, fill: '#3e7ebc',
+                                shadowColor: 'black', shadowBlur: 4,
+                                shadowOffset: { x: 1, y: 1 }, shadowOpacity: 0.2
+                            });
+                            group.add(electron);
+                        }
+                    }
+                }
+
+                // 텍스트는 가장 위에 보이게 마지막에 추가
+                const text = new Konva.Text({
+                    text: symbol,
+                    fontSize: 24,
+                    fontStyle: 'bold',
+                    fill: '#2a3b4c',
+                    offsetX: 8, 
+                    offsetY: 12
+                });
+                group.add(text);
+
+                group.on('dblclick dbltap', () => { 
+                    removeNodeFromSelection(group);
+                    group.destroy(); 
+                    layer.draw(); 
+                });
+                group.on('mouseenter', () => { document.body.style.cursor = 'move'; });
+                group.on('mouseleave', () => { document.body.style.cursor = 'default'; });
+
+                layer.add(group);
+                layer.draw();
+            }
+
+            // ==========================================
+            // 전자 주머니 설정 (위치 수정: x를 160에서 710으로 이동)
+            // ==========================================
+            const spawnerGroup = new Konva.Group({ x: 710, y: 590 });
+            const spawnerBox = new Konva.Rect({
+                x: -130, y: -30, width: 260, height: 60,
+                fill: '#ffffff', stroke: '#d1d5da', cornerRadius: 8,
+                shadowColor: 'black', shadowBlur: 4, shadowOffset: { x: 0, y: 2 }, shadowOpacity: 0.05
+            });
+            const spawnerVisual = new Konva.Circle({ x: -90, y: 0, radius: 12, fill: '#3e7ebc' }); 
+            const spawnerText = new Konva.Text({
+                x: -65, y: -8, text: '전자를 드래그하세요!', fontSize: 16, fill: '#2a3b4c', fontStyle: 'bold'
+            });
+            spawnerGroup.add(spawnerBox, spawnerVisual, spawnerText);
+            layer.add(spawnerGroup);
+
+            spawnerGroup.on('mousedown touchstart', () => {
+                const pos = stage.getPointerPosition();
+                const newElectron = new Konva.Circle({
+                    x: pos.x, y: pos.y, radius: 10, fill: '#3e7ebc',
+                    draggable: true, shadowColor: 'black', shadowBlur: 4,
+                    shadowOffset: { x: 2, y: 2 }, shadowOpacity: 0.2
+                });
+
+                newElectron.on('dblclick dbltap', () => { 
+                    removeNodeFromSelection(newElectron);
+                    newElectron.destroy(); 
+                    layer.draw(); 
+                });
+                newElectron.on('mouseenter', () => { document.body.style.cursor = 'pointer'; });
+                newElectron.on('mouseleave', () => { document.body.style.cursor = 'default'; });
+                
+                layer.add(newElectron);
+                setTimeout(() => { newElectron.startDrag(); }, 10); 
+            });
+
+            // 화면에 원자 추가 이벤트
+            document.getElementById('addAtomBtn').addEventListener('click', () => {
+                const selectedIndex = parseInt(selectEl.value, 10);
+                const element = elementsData[selectedIndex];
+                const randomX = 450 + Math.random() * 450;
+                const randomY = 150 + Math.random() * 300;
+                createAtom(randomX, randomY, element.symbol, element.shells, isFillInnerMode);
+            });
+
+            // 다중 이동 모드 토글 이벤트
+            const multiMoveBtn = document.getElementById('multiMoveBtn');
+            multiMoveBtn.addEventListener('click', () => {
+                isMultiMoveMode = !isMultiMoveMode;
+                if (isMultiMoveMode) {
+                    multiMoveBtn.classList.add('active');
+                    multiMoveBtn.innerHTML = '🔲 다중 선택 모드: ON';
+                } else {
+                    multiMoveBtn.classList.remove('active');
+                    multiMoveBtn.innerHTML = '🔲 다중 선택 모드: OFF';
+                    tr.nodes([]);
+                    selectedNodes = [];
+                    selectionRect.visible(false);
+                    layer.draw();
+                }
+            });
+
+            // 내부 전자 채우기 모드 토글 이벤트
+            const fillInnerBtn = document.getElementById('fillInnerBtn');
+            fillInnerBtn.addEventListener('click', () => {
+                isFillInnerMode = !isFillInnerMode;
+                if (isFillInnerMode) {
+                    fillInnerBtn.classList.add('active');
+                    fillInnerBtn.innerHTML = '⚛️ 내부 전자 자동 채우기: ON';
+                } else {
+                    fillInnerBtn.classList.remove('active');
+                    fillInnerBtn.innerHTML = '⚛️ 내부 전자 자동 채우기: OFF';
+                }
+            });
+
+            // === Delete 키 삭제 이벤트 ===
+            window.addEventListener('keydown', (e) => {
+                // Delete 키 또는 Backspace 키 처리 (다중 선택 모드일 때만)
+                if ((e.key === 'Delete' || e.key === 'Backspace') && isMultiMoveMode && selectedNodes.length > 0) {
+                    e.preventDefault(); // 뒤로가기 등 브라우저 기본 동작 방지
+                    selectedNodes.forEach(node => {
+                        node.destroy();
+                    });
+                    selectedNodes = [];
+                    tr.nodes([]);
+                    layer.draw();
+                }
+            });
+
+            // === 개선된 영역 선택 및 묶음 이동 로직 ===
+            let x1, y1, x2, y2;
+            let isSelecting = false;
+            let isDraggingGroup = false;
+            let dragStartPositions = new Map();
+            let currentDragNode = null;
+
+            stage.on('mousedown touchstart', (e) => {
+                if (!isMultiMoveMode) return;
+
+                // 1. 클릭한 요소가 이미 선택된 묶음에 포함되어 있는지 확인
+                let targetNode = e.target;
+                let dragTarget = targetNode;
+                
+                // 그룹 내부의 요소를 클릭했을 경우를 대비해 최상위 그룹을 찾음
+                while (dragTarget && !selectedNodes.includes(dragTarget)) {
+                    if (dragTarget.getClassName() === 'Stage' || dragTarget.getClassName() === 'Layer') {
+                        dragTarget = null;
+                        break;
+                    }
+                    dragTarget = dragTarget.parent;
+                }
+
+                // 선택된 요소를 클릭했다면 묶음 드래그 준비! 
+                if (dragTarget) {
+                    isDraggingGroup = true;
+                    currentDragNode = dragTarget;
+                    dragStartPositions.clear();
+                    
+                    selectedNodes.forEach(n => {
+                        dragStartPositions.set(n, { x: n.x(), y: n.y() });
+                    });
+                    dragStartPositions.set('drag_node', { x: dragTarget.x(), y: dragTarget.y() });
+                    return; 
+                }
+
+                // 2. 선택되지 않은 빈 공간을 클릭했다면 영역 선택 박스 그리기 시작
+                if (e.target !== stage && e.target.getClassName() !== 'Layer') {
+                    if (e.target.findAncestor('Group') === spawnerGroup) return;
+                    return;
+                }
+
+                e.evt.preventDefault();
+                x1 = stage.getPointerPosition().x;
+                y1 = stage.getPointerPosition().y;
+                x2 = x1;
+                y2 = y1;
+
+                selectionRect.width(0);
+                selectionRect.height(0);
+                selectionRect.position({ x: x1, y: y1 });
+                selectionRect.visible(true);
+                isSelecting = true;
+            });
+
+            stage.on('mousemove touchmove', (e) => {
+                if (!isMultiMoveMode || !isSelecting) return;
+                e.evt.preventDefault();
+                x2 = stage.getPointerPosition().x;
+                y2 = stage.getPointerPosition().y;
+
+                selectionRect.setAttrs({
+                    x: Math.min(x1, x2),
+                    y: Math.min(y1, y2),
+                    width: Math.abs(x2 - x1),
+                    height: Math.abs(y2 - y1),
+                });
+            });
+
+            stage.on('mouseup touchend', (e) => {
+                if (isDraggingGroup) {
+                    isDraggingGroup = false;
+                    currentDragNode = null;
+                }
+
+                if (!isMultiMoveMode || !isSelecting) return;
+                isSelecting = false;
+                setTimeout(() => { selectionRect.visible(false); });
+
+                const box = selectionRect.getClientRect();
+                const shapes = layer.getChildren((node) => {
+                    if (node === tr || node === selectionRect || node === spawnerGroup) return false;
+                    if (node.getClassName() === 'Layer') return false;
+                    return true;
+                });
+
+                selectedNodes = shapes.filter((shape) => {
+                    return Konva.Util.haveIntersection(box, shape.getClientRect());
+                });
+
+                tr.nodes(selectedNodes);
+                layer.draw();
+            });
+
+            // 실시간 묶음 이동 로직
+            layer.on('dragmove', function (e) {
+                if (!isMultiMoveMode || !isDraggingGroup || !currentDragNode) return;
+                
+                const node = e.target;
+                
+                if (node === currentDragNode) {
+                    const startPos = dragStartPositions.get('drag_node');
+                    if (!startPos) return;
+
+                    const dx = node.x() - startPos.x;
+                    const dy = node.y() - startPos.y;
+
+                    selectedNodes.forEach((n) => {
+                        if (n !== node) {
+                            const initPos = dragStartPositions.get(n);
+                            n.x(initPos.x + dx);
+                            n.y(initPos.y + dy);
+                        }
+                    });
+                    tr.forceUpdate(); 
+                }
+            });
+
+            // 초기 화면 설정 (초기 배치 원자는 내부 전자가 없는 기본 상태)
+            createAtom(710, 250, 'C', 2, false);
+            createAtom(510, 250, 'O', 2, false);
+            createAtom(910, 250, 'O', 2, false);
+
+            layer.draw();
+        });
+    </script>
+</body>
+</html>
